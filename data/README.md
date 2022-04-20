@@ -1,0 +1,2 @@
+## Place for the "affregcommon2mm_roi_ct_train" and "affregcommon2mm_roi_mr_train" folders
+they can be downloaded at http://www.sdspeople.fudan.edu.cn/zhuangxiahai/0/mmwhs/affregcommon2mm_roi_ct_train.zip and http://www.sdspeople.fudan.edu.cn/zhuangxiahai/0/mmwhs/affregcommon2mm_roi_mr_train.zip
