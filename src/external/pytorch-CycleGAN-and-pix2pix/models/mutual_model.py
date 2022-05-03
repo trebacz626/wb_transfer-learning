@@ -32,11 +32,11 @@ class MutualModel(BaseModel):
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
         self.loss_names = ['D_A', 'G_A', 'cycle_A', 'D_T', 'G_T', 'cycle_T', 'syn_sup', 'real_sup', 'kd_r_s', 'kd_s_r']
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
-        visual_names_A = ['real_A', 'fake_T', 'rec_A', 'label_A_raw']
-        visual_names_T = ['real_T', 'fake_A', 'rec_T', 'label_T_raw']
+        visual_names_A = ['real_A', 'fake_T', 'rec_A']
+        visual_names_T = ['real_T', 'fake_A', 'rec_T']
 
 
-        self.visual_names = visual_names_A + visual_names_T + ['p_T_real', 'p_A_T_real', 'p_T_syn', 'p_A_T_syn'] # combine visualizations for A and B
+        self.visual_names = visual_names_A + visual_names_T
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>.
         if self.isTrain:
             self.model_names = ['G_A', 'G_T', 'D_A', 'D_T', 'S_real', 'S_syn']
@@ -84,6 +84,7 @@ class MutualModel(BaseModel):
             self.criterionIdt = torch.nn.L1Loss().to(self.device)
             self.criterionCE = torch.nn.CrossEntropyLoss().to(self.device)
             self.criterion_dice = DiceLoss().to(self.device)
+            self.softmax = torch.nn.Softmax(dim=1)
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G_A = torch.optim.Adam(self.netG_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_G_T = torch.optim.Adam(self.netG_T.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -153,24 +154,24 @@ class MutualModel(BaseModel):
 
     def backward_D_A(self):
         """Calculate GAN loss for discriminator D_A"""
-        self.optimizer_D_A.zero_grad()
+        # self.optimizer_D_A.zero_grad()
         fake_T = self.fake_T_pool.query(self.fake_T)
         self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_T, fake_T)
         # self.optimizer_D_A.step()
 
     def backward_D_T(self):
         """Calculate GAN loss for discriminator D_B"""
-        self.optimizer_D_T.zero_grad()
+        # self.optimizer_D_T.zero_grad()
         fake_A = self.fake_A_pool.query(self.fake_A)
         self.loss_D_T = self.backward_D_basic(self.netD_T, self.real_A, fake_A)
         # self.optimizer_D_T.step()
 
     def backward_G_A_T(self):
         lambda_A = self.opt.lambda_A
-        self.optimizer_G_A.zero_grad()
+        # self.optimizer_G_A.zero_grad()
         self.loss_G_A = self.criterionGAN(self.netD_A(self.fake_T), True)
         self.loss_cycle_A = self.criterionCycle(self.rec_A, self.real_A) * lambda_A
-        self.loss_syn_sup = self.criterionCE(self.p_A_T_syn, self.label_A) + self.criterion_dice(self.p_A_T_syn, self.label_T)
+        self.loss_syn_sup = self.criterionCE(self.p_A_T_syn, self.label_A) + self.criterion_dice(self.p_A_T_syn, self.label_A)
 
         self.loss_G_A_T = self.loss_G_A + self.loss_cycle_A + self.loss_syn_sup
         self.loss_G_A_T.backward(retain_graph=True)
@@ -180,7 +181,7 @@ class MutualModel(BaseModel):
     def backward_G_T_A(self):
         lambda_T = self.opt.lambda_T
 
-        self.optimizer_G_T.zero_grad()
+        # self.optimizer_G_T.zero_grad()
         self.loss_G_T = self.criterionGAN(self.netD_T(self.fake_A), True)
         self.loss_cycle_T = self.criterionCycle(self.rec_T, self.real_T) * lambda_T
 
@@ -193,22 +194,18 @@ class MutualModel(BaseModel):
     def backward_S(self):
         lambda_KD_1 = self.opt.lambda_KD_1
         lambda_KD_2 = self.opt.lambda_KD_2
-        self.optimizer_S.zero_grad()
+        # self.optimizer_S.zero_grad()
 
-        # self.loss_syn_sup = self.criterionCE(self.p_A_T_syn, self.label_A) + self.criterion_dice(self.p_A_T_syn, self.label_A)
-        # print(self.criterionCE(self.p_A_T_real, self.p_A_T_syn))
-        #
-        # if(self.criterionCE(self.p_A_T_real, self.p_A_T_syn) < 0):
-        #     print(self.p_A_T_real[0,0,0:2, 0:2])
-        #     print(self.p_A_T_syn[0,0,0:2, 0:2])
-        self.loss_kd_s_r = self.criterionCE(self.p_A_T_real, self.p_A_T_syn) * lambda_KD_1
-        self.loss_syn_seg = self.loss_syn_sup + self.loss_kd_s_r
 
         self.loss_real_sup = self.criterionCE(self.p_T_real, self.label_T) + self.criterion_dice(self.p_T_real, self.label_T)
-        self.loss_kd_r_s = self.criterionCE(self.p_T_syn, self.p_T_real) * lambda_KD_2
-        self.loss_real_seg = self.loss_real_sup + self.loss_kd_r_s
+        self.loss_kd_s_r = self.criterionCE(self.p_A_T_real, self.softmax(self.p_A_T_syn)) * lambda_KD_1
+        self.loss_real_seg = self.loss_real_sup + self.loss_kd_s_r
 
-        self.loss_real_seg.backward()
+        # self.loss_syn_sup = self.criterionCE(self.p_A_T_syn, self.label_A) + self.criterion_dice(self.p_A_T_syn, self.label_A)
+        self.loss_kd_r_s = self.criterionCE(self.p_T_syn, self.softmax(self.p_T_real)) * lambda_KD_2
+        self.loss_syn_seg = self.loss_syn_sup + self.loss_kd_r_s
+
+        self.loss_real_seg.backward(retain_graph=True)
         self.loss_syn_seg.backward()
         # self.optimizer_S.step()
         return self.loss_syn_seg, self.loss_real_seg
@@ -218,21 +215,22 @@ class MutualModel(BaseModel):
         # forward
         self.forward()      # compute fake images and reconstruction images.
 
-        # self.set_requires_grad([self.netD_A, self.netD_T, self.netG_T, self.netS_real, self.netS_syn], False)
+        for optimizer in self.optimizers:
+            optimizer.zero_grad() #
+        self.set_requires_grad([self.netD_A, self.netD_T], False)
         # self.set_requires_grad([self.netG_A], True)
         self.backward_G_A_T()
         # self.set_requires_grad([self.netG_A], False)
-        # self.set_requires_grad([self.netD_T], True)
+        self.set_requires_grad([self.netD_T], True)
         self.backward_D_T()
-        # self.set_requires_grad([self.netD_T], False)
+        self.set_requires_grad([self.netD_T], False)
         # self.set_requires_grad([self.netG_T], True)
         self.backward_G_T_A()
         # self.set_requires_grad([self.netG_T], False)
-        # self.set_requires_grad([self.netD_A], True)
+        self.set_requires_grad([self.netD_A], True)
         self.backward_D_A()
-        # self.set_requires_grad([self.netD_A], False)
+        self.set_requires_grad([self.netD_A], False)
         # self.set_requires_grad([self.netS_real, self.netS_syn], True)
         self.backward_S()
         for optimizer in self.optimizers:
             optimizer.step()
-        # self.set_requires_grad([self.netD_A, self.netD_T], False)  # Ds require no gradients when optimizing Gs
