@@ -1,4 +1,3 @@
-# !/bin/python3
 # %%
 from data import HeartDataset
 from unet.unet import UNet, UNetAlt
