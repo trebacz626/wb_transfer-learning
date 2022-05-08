@@ -5,3 +5,6 @@ torchvision
 nibabel
 matplotlib
 glob
+wandb
+logging
+tqdm
