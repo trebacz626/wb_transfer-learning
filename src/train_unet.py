@@ -60,9 +60,7 @@ unet = UNetAlt()
 unet.to("cuda")
 
 optimizer = optim.Adam(unet.parameters(), lr=0.01)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, "max", patience=2
-)  # goal: maximize Dice score
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "max", patience=2)
 grad_scaler = torch.cuda.amp.GradScaler(enabled=True)
 global_step = 0
 
