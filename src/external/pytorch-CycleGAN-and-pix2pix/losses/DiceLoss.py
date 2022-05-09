@@ -7,14 +7,10 @@ class DiceLoss(nn.Module):
 
     def forward(self, inputs, targets, smooth=1):
 
-        #comment out if your model contains a sigmoid or equivalent activation layer
-        inputs = F.sigmoid(inputs)
+        inputs = F.softmax(inputs, dim=1)
 
-        #flatten label and prediction tensors
-        inputs = inputs.view(-1)
-        targets = targets.view(-1)
 
-        intersection = (inputs * targets).sum()
-        dice = (2.*intersection + smooth)/(inputs.sum() + targets.sum() + smooth)
+        intersection = (inputs * targets).sum(dim=(2,3))
+        dice = (2.*intersection + smooth)/(inputs.sum(dim=(2,3)) + targets.sum(dim=(2,3)) + smooth)
 
-        return 1 - dice
+        return 1 - dice.mean()

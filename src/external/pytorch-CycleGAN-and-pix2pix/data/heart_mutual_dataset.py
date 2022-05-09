@@ -11,7 +11,7 @@ import os
 from data import BaseDataset
 
 
-class HeartMutualDataset(BaseDataset):
+class HeartMutual2Dataset(BaseDataset):
     def __init__(self, opt):
         """
         Creates dataset with augumentation from nifti files in a directory
@@ -22,15 +22,16 @@ class HeartMutualDataset(BaseDataset):
                 If degrees is a number instead of sequence like (min, max), the range of degrees
                 will be (-degrees, +degrees).
             size: desired size; if None no resizing is done
-            h_flip: if True horizontal flip is randomly applied 
+            h_flip: if True horizontal flip is randomly applied
             v_flip: if True vertical flip is randomly applied
         """
         images_directory_ct = "datasets/heart/affregcommon2mm_roi_ct_train"
         images_directory_mr = "datasets/heart/affregcommon2mm_roi_mr_train"
         rotation_degrees = 5
-        size = (opt.load_size,opt.load_size)
+        size = (opt.load_size, opt.load_size)
         h_flip = True
         v_flip = True
+
         self.LABEL_ENCODING_ARRAY = np.array([  0, 205, 500, 600, 420, 550, 820, 850]).reshape((-1, 1, 1))
         self.SLICES_PER_SCAN = 96
         self.images_paths_ct = glob.glob(images_directory_ct + os.sep + "*image*")
@@ -42,7 +43,8 @@ class HeartMutualDataset(BaseDataset):
             random_transforms.append(transforms.RandomHorizontalFlip())
         if v_flip:
             random_transforms.append(transforms.RandomVerticalFlip())
-        self.random_transform = transforms.Compose(random_transforms) 
+        self.random_transform = transforms.Compose(random_transforms)
+        self.normalize_scan = transforms.Normalize(0.5,0.5)
         self.resize = size
         if size is not None:
             self.label_resizer = transforms.Resize(size, interpolation=transforms.InterpolationMode.NEAREST)
@@ -57,22 +59,20 @@ class HeartMutualDataset(BaseDataset):
         scan_ct = nib.load(self.images_paths_ct[idx // self.SLICES_PER_SCAN])
         label_scan_ct = nib.load(self.labels_paths_ct[idx // self.SLICES_PER_SCAN])
         index_ct = idx % self.SLICES_PER_SCAN
-        scan_slice_ct, label_slice_ct, label_slice_ct_raw = self.transform(scan_ct, label_scan_ct, index_ct, is_ct=True)
+        scan_slice_ct, label_slice_ct = self.transform(scan_ct, label_scan_ct, index_ct, is_ct=True)
         idx_mr = random.randint(0, len(self.images_paths_mr) * self.SLICES_PER_SCAN - 1)
         scan_mr = nib.load(self.images_paths_mr[idx_mr // self.SLICES_PER_SCAN])
         label_scan_mr = nib.load(self.labels_paths_ct[idx_mr // self.SLICES_PER_SCAN])
         index_mr = idx_mr % self.SLICES_PER_SCAN
-        scan_slice_mr, label_slice_mr, label_slice_mr_raw = self.transform(scan_mr, label_scan_mr, index_mr, is_ct=False)
-        T_path = self.images_paths_ct[idx // self.SLICES_PER_SCAN]
-        A_path = self.images_paths_mr[idx // self.SLICES_PER_SCAN]
+        scan_slice_mr, label_slice_mr = self.transform(scan_mr, label_scan_mr, index_mr, is_ct=False)
+        A_path = self.images_paths_ct[idx // self.SLICES_PER_SCAN]
+        B_path = self.images_paths_mr[idx // self.SLICES_PER_SCAN]
         return {"T_scan": scan_slice_ct,
                 "A_scan": scan_slice_mr,
-                'T_paths': T_path,
-                'A_paths': A_path,
                 "T_labels": label_slice_ct.float(),
                 "A_labels": label_slice_mr.float(),
-                "T_labels_raw": label_slice_ct_raw,
-                "A_labels_raw": label_slice_mr_raw}
+                'T_paths': A_path,
+                'A_paths': B_path}
 
     def transform(self, scan, label_scan, index, is_ct = True):
         #reading data
@@ -84,11 +84,13 @@ class HeartMutualDataset(BaseDataset):
         # random transformations (images and labels are concatenated to ensure the same transformations are applied to them)
         cated_tensor = torch.cat((scan_slice, label_slice), 0)
         cated_tensor = self.random_transform(cated_tensor)
-        scan_slice, label_slice = cated_tensor[[0],:,:], cated_tensor[[1],:,:]
+        scan_slice, label_slice= cated_tensor[[0],:,:], cated_tensor[[1],:,:]
         label_slice_encoded = np.equal(label_slice, self.LABEL_ENCODING_ARRAY)      #onehot encoding label
         if self.resize is not None:
             scan_slice = self.image_resizer(scan_slice)
             label_slice_encoded = self.label_resizer(label_slice_encoded)
-        return scan_slice, label_slice_encoded, label_slice
+        scan_slice = (scan_slice-torch.min(scan_slice))/(torch.max(scan_slice) - torch.min(scan_slice))
+        scan_slice = self.normalize_scan(scan_slice)
+        return scan_slice, label_slice_encoded
 
 
