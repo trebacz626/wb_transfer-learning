@@ -5,3 +5,4 @@ torchvision
 nibabel
 matplotlib
 glob
+segmentation-models-pytorch

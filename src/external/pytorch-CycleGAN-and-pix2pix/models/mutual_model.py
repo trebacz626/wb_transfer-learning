@@ -14,12 +14,22 @@ class MutualModel(BaseModel):
     def modify_commandline_options(parser, is_train=True):
         parser.set_defaults(no_dropout=True)  # default CycleGAN did not use dropout
         if is_train:
-            parser.add_argument('--lambda_A', type=float, default=10.0, help='weight for cycle loss (A -> B -> A)')
-            parser.add_argument('--lambda_T', type=float, default=10.0, help='weight for cycle loss (B -> A -> B)')
+            parser.add_argument(
+                "--lambda_A",
+                type=float,
+                default=10.0,
+                help="weight for cycle loss (A -> B -> A)",
+            )
+            parser.add_argument(
+                "--lambda_T",
+                type=float,
+                default=10.0,
+                help="weight for cycle loss (B -> A -> B)",
+            )
             # parser.add_argument('--lambda_identity', type=float, default=0.5, help='use identity mapping. Setting lambda_identity other than 0 has an effect of scaling the weight of the identity mapping loss. For example, if the weight of the identity loss should be 10 times smaller than the weight of the reconstruction loss, please set lambda_identity = 0.1')
-            parser.add_argument('--lambda_KD_1', type=float, default=0.5)
-            parser.add_argument('--lambda_KD_2', type=float, default=1.0)
-            parser.add_argument('--num_labels', type=int, default=8)
+            parser.add_argument("--lambda_KD_1", type=float, default=0.5)
+            parser.add_argument("--lambda_KD_2", type=float, default=1.0)
+            parser.add_argument("--num_labels", type=int, default=8)
 
         return parser
 
@@ -31,78 +41,143 @@ class MutualModel(BaseModel):
         """
         BaseModel.__init__(self, opt)
         # specify the training losses you want to print out. The training/test scripts will call <BaseModel.get_current_losses>
-        self.loss_names = ['D_A', 'G_A', 'cycle_A', 'D_T', 'G_T', 'cycle_T','syn_sup', 'real_sup', 'kd_r_s', 'kd_s_r']
+        self.loss_names = [
+            "D_A",
+            "G_A",
+            "cycle_A",
+            "D_T",
+            "G_T",
+            "cycle_T",
+            "syn_sup",
+            "real_sup",
+            "kd_r_s",
+            "kd_s_r",
+        ]
         # specify the images you want to save/display. The training/test scripts will call <BaseModel.get_current_visuals>
         visual_names_A = []
-        visual_names_T = ['real_T']
+        visual_names_T = ["real_T"]
         visual_names_S = []
 
-        if self.isTrain:
-            visual_names_A += ['real_A', 'fake_T', 'rec_A']
-            visual_names_T += ['fake_A', 'rec_T']
+        if self.is_train:
+            visual_names_A += ["real_A", "fake_T", "rec_A"]
+            visual_names_T += ["fake_A", "rec_T"]
         else:
-            visual_names_S += ['p_T_combined']
+            visual_names_S += ["p_T_combined"]
 
         self.visual_names = visual_names_A + visual_names_T
-        if self.isTrain:
-            self.visual_names += ['label_A_show', 'p_A_T_real_show', 'p_A_T_syn_show']
-        self.visual_names += ['label_T_show', 'p_T_real_show', 'p_T_syn_show']
+        if self.is_train:
+            self.visual_names += ["label_A_show", "p_A_T_real_show", "p_A_T_syn_show"]
+        self.visual_names += ["label_T_show", "p_T_real_show", "p_T_syn_show"]
         # specify the models you want to save to the disk. The training/test scripts will call <BaseModel.save_networks> and <BaseModel.load_networks>.
-        if self.isTrain:
-            self.model_names = ['G_A', 'G_T', 'D_A', 'D_T', 'S_real', 'S_syn']
+        if self.is_train:
+            self.model_names = ["G_A", "G_T", "D_A", "D_T", "S_real", "S_syn"]
         else:  # during test time, only load Gs
-            self.model_names = ['S_real', 'S_syn']
+            self.model_names = ["S_real", "S_syn"]
 
         # define networks (both Generators and discriminators)
         # The naming is different from those used in the paper.
         # Code (vs. paper): G_A (G), G_B (F), D_A (D_Y), D_B (D_X)
-        self.netG_A = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG, opt.norm,
-                                        not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+        self.netG_A = networks.define_G(
+            opt.input_nc,
+            opt.output_nc,
+            opt.ngf,
+            opt.netG,
+            opt.norm,
+            not opt.no_dropout,
+            opt.init_type,
+            opt.init_gain,
+            self.gpu_ids,
+        )
 
-        if self.isTrain:  # define discriminators
-            self.netG_T = networks.define_G(opt.output_nc, opt.input_nc, opt.ngf, opt.netG, opt.norm,
-                                        not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
+        if self.is_train:  # define discriminators
+            self.netG_T = networks.define_G(
+                opt.output_nc,
+                opt.input_nc,
+                opt.ngf,
+                opt.netG,
+                opt.norm,
+                not opt.no_dropout,
+                opt.init_type,
+                opt.init_gain,
+                self.gpu_ids,
+            )
 
-            self.netD_A = networks.define_D(opt.output_nc, opt.ndf, opt.netD,
-                                            opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
-            self.netD_T = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
-                                            opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
+            self.netD_A = networks.define_D(
+                opt.output_nc,
+                opt.ndf,
+                opt.netD,
+                opt.n_layers_D,
+                opt.norm,
+                opt.init_type,
+                opt.init_gain,
+                self.gpu_ids,
+            )
+            self.netD_T = networks.define_D(
+                opt.input_nc,
+                opt.ndf,
+                opt.netD,
+                opt.n_layers_D,
+                opt.norm,
+                opt.init_type,
+                opt.init_gain,
+                self.gpu_ids,
+            )
 
         self.netS_real = smp.Unet(
-            encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-            encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
-            in_channels=opt.output_nc,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-            classes=opt.num_labels,                      # model output channels (number of classes in your dataset)
+            encoder_name="resnet34",  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            encoder_weights="imagenet",  # use `imagenet` pre-trained weights for encoder initialization
+            in_channels=opt.output_nc,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+            classes=opt.num_labels,  # model output channels (number of classes in your dataset)
         )
 
         self.netS_real.to(self.gpu_ids[0])
 
         self.netS_syn = smp.Unet(
-            encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-            encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
-            in_channels=opt.output_nc,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-            classes=opt.num_labels,                      # model output channels (number of classes in your dataset)
+            encoder_name="resnet34",  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            encoder_weights="imagenet",  # use `imagenet` pre-trained weights for encoder initialization
+            in_channels=opt.output_nc,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+            classes=opt.num_labels,  # model output channels (number of classes in your dataset)
         )
 
         self.netS_syn.to(self.gpu_ids[0])
 
-        if self.isTrain:
-            self.fake_A_pool = ImagePool(opt.pool_size)  # create image buffer to store previously generated images
-            self.fake_T_pool = ImagePool(opt.pool_size)  # create image buffer to store previously generated images
+        if self.is_train:
+            self.fake_A_pool = ImagePool(
+                opt.pool_size
+            )  # create image buffer to store previously generated images
+            self.fake_T_pool = ImagePool(
+                opt.pool_size
+            )  # create image buffer to store previously generated images
             # define loss functions
-            self.criterionGAN = networks.GANLoss(opt.gan_mode).to(self.device)  # define GAN loss.
+            self.criterionGAN = networks.GANLoss(opt.gan_mode).to(
+                self.device
+            )  # define GAN loss.
             self.criterionCycle = torch.nn.L1Loss().to(self.device)
             self.criterionIdt = torch.nn.L1Loss().to(self.device)
             self.criterionCE = torch.nn.CrossEntropyLoss().to(self.device)
             self.criterion_dice = DiceLoss().to(self.device)
             self.softmax = torch.nn.Softmax(dim=1)
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
-            self.optimizer_G_A = torch.optim.Adam(self.netG_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.optimizer_G_T = torch.optim.Adam(self.netG_T.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.optimizer_D_A = torch.optim.Adam(self.netD_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
-            self.optimizer_D_T = torch.optim.Adam(self.netD_T.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+            self.optimizer_G_A = torch.optim.Adam(
+                self.netG_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
+            )
+            self.optimizer_G_T = torch.optim.Adam(
+                self.netG_T.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
+            )
+            self.optimizer_D_A = torch.optim.Adam(
+                self.netD_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
+            )
+            self.optimizer_D_T = torch.optim.Adam(
+                self.netD_T.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999)
+            )
 
-            self.optimizer_S = torch.optim.Adam(itertools.chain(self.netS_real.parameters(), self.netS_syn.parameters()), lr=opt.lr, betas=(0.9, 0.999))
+            self.optimizer_S = torch.optim.Adam(
+                itertools.chain(
+                    self.netS_real.parameters(), self.netS_syn.parameters()
+                ),
+                lr=opt.lr,
+                betas=(0.9, 0.999),
+            )
 
             self.optimizers.append(self.optimizer_G_A)
             self.optimizers.append(self.optimizer_G_T)
@@ -123,32 +198,46 @@ class MutualModel(BaseModel):
         self.label_A = input["A_labels"].to(self.device)
         self.label_T = input["T_labels"].to(self.device)
 
-        self.label_A_show = torch.unsqueeze(torch.argmax(input["A_labels"], dim=1)/3.5 - 1, dim = 1)
+        self.label_A_show = torch.unsqueeze(
+            torch.argmax(input["A_labels"], dim=1) / 3.5 - 1, dim=1
+        )
 
-        self.label_T_show = torch.unsqueeze(torch.argmax(input["T_labels"], dim=1)/3.5 - 1, dim = 1)
+        self.label_T_show = torch.unsqueeze(
+            torch.argmax(input["T_labels"], dim=1) / 3.5 - 1, dim=1
+        )
 
     def forward(self):
-        torch.autograd.set_detect_anomaly(True)#TODO remove
+        torch.autograd.set_detect_anomaly(True)  # TODO remove
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
 
-        if self.isTrain:
+        if self.is_train:
             self.fake_T = self.netG_A(self.real_A)  # G_A(A)
-            self.rec_A = self.netG_T(self.fake_T)   # G_B(G_A(A))
+            self.rec_A = self.netG_T(self.fake_T)  # G_B(G_A(A))
             self.fake_A = self.netG_T(self.real_T)  # G_B(B)
-            self.rec_T = self.netG_A(self.fake_A)   # G_A(G_B(B))
+            self.rec_T = self.netG_A(self.fake_A)  # G_A(G_B(B))
             self.p_A_T_real = self.netS_real(self.fake_T)
-            self.p_A_T_real_show = torch.unsqueeze(torch.argmax(self.p_A_T_real.cpu(), dim=1)/3.5 - 1, dim=1)
+            self.p_A_T_real_show = torch.unsqueeze(
+                torch.argmax(self.p_A_T_real.cpu(), dim=1) / 3.5 - 1, dim=1
+            )
             self.p_A_T_syn = self.netS_syn(self.fake_T)
-            self.p_A_T_syn_show = torch.unsqueeze(torch.argmax(self.p_A_T_syn.cpu(), dim=1)/3.5 - 1, dim=1)
+            self.p_A_T_syn_show = torch.unsqueeze(
+                torch.argmax(self.p_A_T_syn.cpu(), dim=1) / 3.5 - 1, dim=1
+            )
 
         self.p_T_real = self.netS_real(self.real_T)
-        self.p_T_real_show = torch.unsqueeze(torch.argmax(self.p_T_real.cpu(), dim=1)/3.5 - 1, dim=1)
+        self.p_T_real_show = torch.unsqueeze(
+            torch.argmax(self.p_T_real.cpu(), dim=1) / 3.5 - 1, dim=1
+        )
 
         self.p_T_syn = self.netS_syn(self.real_T)
-        self.p_T_syn_show = torch.unsqueeze(torch.argmax(self.p_T_syn.cpu(), dim=1)/3.5 - 1, dim=1)
+        self.p_T_syn_show = torch.unsqueeze(
+            torch.argmax(self.p_T_syn.cpu(), dim=1) / 3.5 - 1, dim=1
+        )
 
-        if not self.isTrain:
-            self.p_T_combined = (self.softmax(self.p_T_real) + self.softmax(self.p_T_syn))/2
+        if not self.is_train:
+            self.p_T_combined = (
+                self.softmax(self.p_T_real) + self.softmax(self.p_T_syn)
+            ) / 2
 
     def backward_D_basic(self, netD, real, fake):
         """Calculate GAN loss for the discriminator
@@ -196,9 +285,11 @@ class MutualModel(BaseModel):
         self.loss_cycle_T = self.criterionCycle(self.rec_T, self.real_T)
         self.loss_cycle = self.loss_cycle_A * lambda_A + self.loss_cycle_T * lambda_T
         self.loss_cycle.backward(retain_graph=True)
-        self.loss_syn_sup = self.criterionCE(self.p_A_T_syn, self.label_A) + self.criterion_dice(self.p_A_T_syn, self.label_A)
+        self.loss_syn_sup = self.criterionCE(
+            self.p_A_T_syn, self.label_A
+        ) + self.criterion_dice(self.p_A_T_syn, self.label_A)
 
-        self.loss_G_A_T = self.loss_G_A + self.loss_syn_sup#+ self.loss_cycle
+        self.loss_G_A_T = self.loss_G_A + self.loss_syn_sup  # + self.loss_cycle
         self.loss_G_A_T.backward(retain_graph=True)
         # self.optimizer_G_A.step()
         return self.loss_G_A_T
@@ -208,7 +299,7 @@ class MutualModel(BaseModel):
         # self.optimizer_G_T.zero_grad()
         self.loss_G_T = self.criterionGAN(self.netD_T(self.fake_A), True)
 
-        self.loss_G_T_A = self.loss_G_T #+ self.loss_cycle
+        self.loss_G_T_A = self.loss_G_T  # + self.loss_cycle
         self.loss_G_T_A.backward()
         # self.optimizer_G_T.step()
         return self.loss_G_T_A
@@ -218,9 +309,12 @@ class MutualModel(BaseModel):
         lambda_KD_2 = self.opt.lambda_KD_2
         self.optimizer_S.zero_grad()
 
-
-        self.loss_real_sup = self.criterionCE(self.p_T_real, self.label_T) + self.criterion_dice(self.p_T_real, self.label_T)
-        self.loss_kd_s_r = self.criterionCE(self.p_A_T_real, self.softmax(self.p_A_T_syn))
+        self.loss_real_sup = self.criterionCE(
+            self.p_T_real, self.label_T
+        ) + self.criterion_dice(self.p_T_real, self.label_T)
+        self.loss_kd_s_r = self.criterionCE(
+            self.p_A_T_real, self.softmax(self.p_A_T_syn)
+        )
         self.loss_real_seg = self.loss_kd_s_r * lambda_KD_1 + self.loss_real_sup
 
         # self.loss_syn_sup = self.criterionCE(self.p_A_T_syn, self.label_A) + self.criterion_dice(self.p_A_T_syn, self.label_A)
@@ -235,7 +329,7 @@ class MutualModel(BaseModel):
     def optimize_parameters(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         # forward
-        self.forward()      # compute fake images and reconstruction images.
+        self.forward()  # compute fake images and reconstruction images.
 
         self.optimizer_G_T.zero_grad()
         self.optimizer_G_A.zero_grad()
@@ -248,7 +342,7 @@ class MutualModel(BaseModel):
         self.backward_G_T_A()
         self.set_requires_grad([self.netD_A], True)
         self.backward_D_A()
-        self.set_requires_grad([ self.netD_A], False)
+        self.set_requires_grad([self.netD_A], False)
         self.set_requires_grad([self.netG_A, self.netG_T], False)
         self.backward_S()
         self.set_requires_grad([self.netG_A, self.netG_T], True)
@@ -256,13 +350,10 @@ class MutualModel(BaseModel):
         self.optimizer_G_A.step()
         self.optimizer_G_T.step()
 
-
-
-
     def optimize_parameters_like_in_paper_ale_chyba_nie(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         # forward
-        self.forward()      # compute fake images and reconstruction images.
+        self.forward()  # compute fake images and reconstruction images.
 
         for optimizer in self.optimizers:
             optimizer.zero_grad()
@@ -289,11 +380,13 @@ class MutualModel(BaseModel):
     def optimize_parameters_only_GAN(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         # forward
-        self.forward()      # compute fake images and reconstruction images.
+        self.forward()  # compute fake images and reconstruction images.
 
         for optimizer in self.optimizers:
             optimizer.zero_grad()
-        self.set_requires_grad([self.netD_A, self.netD_T], False )#, self.netS_syn], False)
+        self.set_requires_grad(
+            [self.netD_A, self.netD_T], False
+        )  # , self.netS_syn], False)
         self.backward_G_A_T()
         self.backward_G_T_A()
         self.set_requires_grad([self.netD_T, self.netD_A], True)
@@ -309,11 +402,13 @@ class MutualModel(BaseModel):
     def optimize_parameters_paper_like(self):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         # forward
-        self.forward()      # compute fake images and reconstruction images.
+        self.forward()  # compute fake images and reconstruction images.
 
         for optimizer in self.optimizers:
             optimizer.zero_grad()
-        self.set_requires_grad([self.netD_A, self.netD_T], False )#, self.netS_syn], False)
+        self.set_requires_grad(
+            [self.netD_A, self.netD_T], False
+        )  # , self.netS_syn], False)
         self.backward_G_A_T()
         self.set_requires_grad([self.netD_T], True)
         self.backward_D_T()

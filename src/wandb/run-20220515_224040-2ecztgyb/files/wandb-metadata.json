@@ -1,0 +1,19 @@
+{
+    "os": "Linux-5.15.36-xanmod1-tt-1.1-x86_64-with-glibc2.35",
+    "python": "3.10.4",
+    "heartbeatAt": "2022-05-15T20:40:43.065093",
+    "startedAt": "2022-05-15T20:40:40.074661",
+    "docker": null,
+    "gpu": "NVIDIA GeForce GTX 1050 Ti",
+    "gpu_count": 1,
+    "cpu_count": 8,
+    "cuda": null,
+    "args": null,
+    "state": "running",
+    "program": "/home/mtizim/studia/s6/wbtl/wb_transfer-learning/src/train/train_unet_baseline.py",
+    "codePath": "src/train/train_unet_baseline.py",
+    "git": {
+        "remote": "git@github.com:trebacz626/wb_transfer-learning.git",
+        "commit": "e1a214be867a00dfaa089ba46709efbea05c9b88"
+    }
+}

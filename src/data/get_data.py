@@ -23,7 +23,7 @@ CT_ZIP = CT_FOLDER_TRAIN.with_suffix(".zip")
 MR_ZIP = MR_FOLDER_TRAIN.with_suffix(".zip")
 
 if CT_FOLDER_VALID.exists() or CT_ZIP.exists() or MR_ZIP.exists() or CT_FOLDER_TRAIN.exists() or MR_FOLDER_TRAIN.exists():
-    raise Exception("There are remeining folders and files in directory remove them to continue")
+    raise Exception("There are remaining folders and files in directory remove them to continue")
 
 wget.download("http://www.sdspeople.fudan.edu.cn/zhuangxiahai/0/mmwhs/affregcommon2mm_roi_ct_train.zip", out=str(CT_ZIP))
 wget.download("http://www.sdspeople.fudan.edu.cn/zhuangxiahai/0/mmwhs/affregcommon2mm_roi_mr_train.zip", out=str(MR_ZIP))
