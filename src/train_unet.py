@@ -58,7 +58,7 @@ logging.info(
 unet = UNetAlt()
 unet.to("cuda")
 
-optimizer = optim.Adam(unet.parameters(), lr=0.01)
+optimizer = optim.Adam(unet.parameters(), lr=0.001)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "max", patience=2)
 grad_scaler = torch.cuda.amp.GradScaler(enabled=True)
 global_step = 0
@@ -84,7 +84,7 @@ for epoch in range(1, epochs + 1):
             optimizer.zero_grad(set_to_none=True)
 
             images = images.to(device=device, dtype=torch.float32)
-            true_masks = 1.0 - true_masks.to(device=device, dtype=torch.float32)
+            true_masks = true_masks.to(device=device, dtype=torch.float32)
 
             with torch.cuda.amp.autocast(enabled=True):
                 masks_pred = unet(images)
