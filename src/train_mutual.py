@@ -33,6 +33,7 @@ if __name__ == '__main__':
     model = MutualModel(opt)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
     total_iters = 0                # the total number of training iterations
+    # model.load_networks_and_optimizers(10)
 
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
@@ -64,15 +65,15 @@ if __name__ == '__main__':
             if total_iters % opt.save_latest_freq == 0:   # cache our latest model every <save_latest_freq> iterations
                 print('saving the latest model (epoch %d, total_iters %d)' % (epoch, total_iters))
                 save_suffix = 'iter_%d' % total_iters if opt.save_by_iter else 'latest'
-                # model.save_networks(save_suffix)
+                model.save_networks(save_suffix)
 
             iter_data_time = time.time()
 
 
         if epoch % opt.save_epoch_freq == 0:
             print('saving the model at the end of epoch %d, iters %d' % (epoch, total_iters))
-            # model.save_networks('latest')
-            # model.save_networks(epoch)
+            model.save_networks_and_optimizers('latest')
+            model.save_networks_and_optimizers(epoch)
 
             with torch.no_grad():
                 model.eval()

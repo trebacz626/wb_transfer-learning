@@ -62,6 +62,7 @@ class MutualModel(BaseModel):
         )
 
         self.netS_real.to(self.gpu_ids[0])
+        self.netS_real = torch.nn.DataParallel(self.netS_real, self.gpu_ids)
 
         self.netS_syn = smp.Unet(
             encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
@@ -71,6 +72,7 @@ class MutualModel(BaseModel):
         )
 
         self.netS_syn.to(self.gpu_ids[0])
+        self.netS_syn = torch.nn.DataParallel(self.netS_syn, self.gpu_ids)
 
         if self.isTrain:
             self.fake_A_pool = ImagePool(opt.pool_size)  # create image buffer to store previously generated images
@@ -95,6 +97,8 @@ class MutualModel(BaseModel):
             self.optimizers.append(self.optimizer_D_A)
             self.optimizers.append(self.optimizer_D_T)
             self.optimizers.append(self.optimizer_S)
+
+            self.optimizer_names = ["optimizer_G_A", "optimizer_G_T", "optimizer_D_A", "optimizer_D_T", "optimizer_S"]
 
     def set_input(self, input):
         """Unpack input data from the dataloader and perform necessary pre-processing steps.
