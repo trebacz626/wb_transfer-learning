@@ -33,8 +33,10 @@ if __name__ == '__main__':
     model = MutualModel(opt)      # create a model given opt.model and other options
     model.setup(opt)               # regular setup: load and print networks; create schedulers
     total_iters = 0                # the total number of training iterations
-    # model.load_networks_and_optimizers(10)
 
+    best_validation_score = 0
+
+    wandb.save(f"./checkpoints/{opt.name}/*")
     for epoch in range(opt.epoch_count, opt.n_epochs + opt.n_epochs_decay + 1):    # outer loop for different epochs; we save the model by <epoch_count>, <epoch_count>+<save_latest_freq>
         epoch_start_time = time.time()  # timer for entire epoch
         iter_data_time = time.time()    # timer for data loading per iteration
@@ -71,8 +73,6 @@ if __name__ == '__main__':
 
 
         if epoch % opt.save_epoch_freq == 0:
-            print('saving the model at the end of epoch %d, iters %d' % (epoch, total_iters))
-            model.save_networks_and_optimizers('latest')
             model.save_networks_and_optimizers(epoch)
 
             with torch.no_grad():
@@ -87,5 +87,9 @@ if __name__ == '__main__':
                     valid_scores[key] = sum(valid_scores[key])/len(valid_scores[key])
                 experiment.log(valid_scores)
                 model.train()
+
+            if valid_scores["valid_dice_score_hard"] > best_validation_score:
+                print('saving the best model at the end of epoch %d, iters %d' % (epoch, total_iters))
+                model.save_networks_and_optimizers('latest')
 
         print('End of epoch %d / %d \t Time Taken: %d sec' % (epoch, opt.n_epochs + opt.n_epochs_decay, time.time() - epoch_start_time))

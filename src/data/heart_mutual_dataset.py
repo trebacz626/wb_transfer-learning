@@ -9,7 +9,7 @@ import glob
 import os
 
 from data.base_dataset import BaseDataset
-
+from copy import copy
 
 class HeartMutualDataset(BaseDataset):
     def __init__(self, opt):
@@ -35,9 +35,13 @@ class HeartMutualDataset(BaseDataset):
         self.LABEL_ENCODING_ARRAY = np.array([  0, 205, 500, 600, 420, 550, 820, 850]).reshape((-1, 1, 1))
         self.SLICES_PER_SCAN = 96
         self.images_paths_ct = glob.glob(images_directory_ct + os.sep + "*image*")
+        self.images_ct = [nib.load(path) for path in self.images_paths_ct]
         self.images_paths_mr = glob.glob(images_directory_mr + os.sep + "*image*")
+        self.images_mr = [nib.load(path) for path in self.images_paths_mr]
         self.labels_paths_ct = [name.replace("_image.nii.gz", "_label.nii.gz") for name in self.images_paths_ct]
+        self.labels_ct = [nib.load(path) for path in self.labels_paths_ct]
         self.labels_paths_mr = [name.replace("_image.nii.gz", "_label.nii.gz") for name in self.images_paths_mr]
+        self.labels_mr = [nib.load(path) for path in self.labels_paths_mr]
         random_transforms = [transforms.RandomRotation(rotation_degrees)]
         if h_flip:
             random_transforms.append(transforms.RandomHorizontalFlip())
@@ -56,13 +60,13 @@ class HeartMutualDataset(BaseDataset):
         return len(self.images_paths_ct) * self.SLICES_PER_SCAN
 
     def __getitem__(self, idx):
-        scan_ct = nib.load(self.images_paths_ct[idx // self.SLICES_PER_SCAN])
-        label_scan_ct = nib.load(self.labels_paths_ct[idx // self.SLICES_PER_SCAN])
+        scan_ct = copy(self.images_ct[idx // self.SLICES_PER_SCAN])
+        label_scan_ct = copy(self.labels_ct[idx // self.SLICES_PER_SCAN])
         index_ct = idx % self.SLICES_PER_SCAN
         scan_slice_ct, label_slice_ct = self.transform(scan_ct, label_scan_ct, index_ct, is_ct=True)
         idx_mr = random.randint(0, len(self.images_paths_mr) * self.SLICES_PER_SCAN - 1)
-        scan_mr = nib.load(self.images_paths_mr[idx_mr // self.SLICES_PER_SCAN])
-        label_scan_mr = nib.load(self.labels_paths_mr[idx_mr // self.SLICES_PER_SCAN])
+        scan_mr = copy(self.images_mr[idx_mr // self.SLICES_PER_SCAN])
+        label_scan_mr = copy(self.labels_mr[idx_mr // self.SLICES_PER_SCAN])
         index_mr = idx_mr % self.SLICES_PER_SCAN
         scan_slice_mr, label_slice_mr = self.transform(scan_mr, label_scan_mr, index_mr, is_ct=False)
         A_path = self.images_paths_ct[idx // self.SLICES_PER_SCAN]
