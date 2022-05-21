@@ -1,7 +1,8 @@
-pandas
-pytorch
-numpy
-torchvision
-nibabel
-matplotlib
-glob
+matplotlib==3.4.3
+nibabel==3.2.2
+numpy==1.21.2
+Pillow==9.1.1
+# torch==1.10.0
+# torchvision==0.11.1
+wandb==0.12.9
+wget==3.2
