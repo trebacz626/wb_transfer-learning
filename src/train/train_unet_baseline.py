@@ -10,6 +10,7 @@ import torch.nn as nn
 from tqdm import tqdm
 from torch.utils.data import DataLoader, random_split
 import segmentation_models_pytorch as smp
+from models.unet import UNet
 import torch.nn.functional as F
 import wandb
 import logging
@@ -25,9 +26,9 @@ def dataselector(data):
 # %%
 
 lossfn = DiceLoss()
-learning_rate = 1e-5
+learning_rate = 1e-4
 epochs = 150
-batch_size = 16
+batch_size = 32
 val_percent = 0.1
 save_checkpoint = True
 amp = True
@@ -50,7 +51,7 @@ class dotdict(dict):
     __delattr__ = dict.__delitem__
 
 
-opt = dotdict({"load_size": 288, "no_flip": False})
+opt = dotdict({"load_size": 96, "no_flip": False})
 dataset = HeartMutualDataset(opt)
 datasetval = HeartMutualValidDataset(opt)
 
@@ -72,9 +73,11 @@ logging.info(
 unet = smp.Unet(
     encoder_name="resnet34",  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
     encoder_weights="imagenet",  # use `imagenet` pre-trained weights for encoder initialization
+    activation="sigmoid",
     in_channels=1,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
     classes=8,  # model output channels (number of classes in your dataset)
 )
+# unet = UNet(in_channels=1, out_channels=1, init_features=32)
 unet.to("cuda")
 
 optimizer = optim.Adam(unet.parameters(), lr=0.001)
@@ -109,10 +112,7 @@ def evaluate(net, dataloader, device, lossfn, dsel):
         with torch.no_grad():
             masks_pred = net(images)
 
-            dice_score += lossfn(
-                masks_pred,
-                true_masks,
-            )
+            dice_score += lossfn(masks_pred, true_masks, softmax=False)
 
     if num_val_batches == 0:
         return dice_score
@@ -135,10 +135,7 @@ for epoch in range(1, epochs + 1):
 
             with torch.cuda.amp.autocast(enabled=True):
                 masks_pred = unet(images)
-                loss = lossfn(
-                    masks_pred,
-                    true_masks,
-                )
+                loss = lossfn(masks_pred, true_masks, softmax=False)
 
             grad_scaler.scale(loss).backward()
             grad_scaler.step(optimizer)
@@ -161,26 +158,26 @@ for epoch in range(1, epochs + 1):
                 masks = {}
 
                 # just two masks for brevity
-                for i in range(1, 3):
+                for i in range(0, 2):
                     tim = [
                         PIL.Image.fromarray(
                             np.uint8(
                                 (true_masks[n][i].float().cpu().detach()).numpy()
-                                * 254.0
+                                * 255.0
                             ),
                             mode="L",
                         )
-                        for n in range(5)
+                        for n in range(3)
                     ]
                     pim = [
                         PIL.Image.fromarray(
                             np.uint8(
                                 (masks_pred[n].float().cpu()[i].detach()).numpy()
-                                * 254.0
+                                * 255.0
                             ),
                             mode="L",
                         )
-                        for n in range(5)
+                        for n in range(3)
                     ]
                     masks[f"true_{i}"] = [wandb.Image(t) for t in tim]
                     masks[f"pred_{i}"] = [wandb.Image(p) for p in pim]
