@@ -1,6 +1,5 @@
 import torch
 import itertools
-import segmentation_models_pytorch as smp
 from torch.optim import lr_scheduler
 
 from losses.DiceLoss import DiceLoss
