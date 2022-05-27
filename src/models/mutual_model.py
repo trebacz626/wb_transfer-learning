@@ -109,10 +109,9 @@ class MutualModel(BaseModel):
            self.label_A_show = torch.unsqueeze(torch.argmax(input["A_labels"], dim=1)/3.5 - 1, dim=1)
 
     def get_schedulers(self, opt):
-        return [lr_scheduler.StepLR(self.optimizer_S, step_size=2, gamma=0.9)]
+        return [lr_scheduler.StepLR(self.optimizer_S, step_size=8, gamma=0.9)]
 
     def forward(self):
-        torch.autograd.set_detect_anomaly(True)#TODO remove
         """Run forward pass; called by both functions <optimize_parameters> and <test>."""
 
         if self.isTrain:

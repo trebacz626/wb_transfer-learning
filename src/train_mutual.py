@@ -59,8 +59,9 @@ if __name__ == '__main__':
 
             if total_iters % opt.print_freq == 0:    # print training losses and save logging information to the disk
                 losses = model.get_current_losses()
+                lrs = {f"lr_{name}": optimizer.param_groups[0]['lr']  for optimizer, name in zip(model.optimizers, model.optimizer_names)}
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
-                experiment.log(losses)
+                experiment.log({**losses, **lrs})
                 print({"epoch":epoch, "epoch_iter":epoch_iter})
 
 
@@ -71,6 +72,8 @@ if __name__ == '__main__':
 
             iter_data_time = time.time()
 
+
+        experiment.log(lrs)
 
         if epoch % opt.save_epoch_freq == 0:
             model.save_networks_and_optimizers(epoch)
