@@ -1,3 +1,0 @@
-checkpoints/unet-checkpoint-final filter=lfs diff=lfs merge=lfs -text
-*.cp filter=lfs diff=lfs merge=lfs -text
-checkpoints/*.cp filter=lfs diff=lfs merge=lfs -text

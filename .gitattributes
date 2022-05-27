@@ -1,0 +1,2 @@
+*.cp filter=lfs diff=lfs merge=lfs -text
+src/checkpoints/*.cp filter=lfs diff=lfs merge=lfs -text
