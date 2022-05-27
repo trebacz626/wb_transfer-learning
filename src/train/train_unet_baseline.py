@@ -17,6 +17,7 @@ import logging
 import PIL
 import numpy as np
 from losses.DiceLoss import DiceLoss
+from torch.nn import CrossEntropyLoss
 
 # %%
 def dataselector(data):
@@ -24,11 +25,12 @@ def dataselector(data):
 
 
 # %%
-
-lossfn = DiceLoss()
+device = "cuda"
+lossfn = DiceLoss().to(device)
+criterion_ce = CrossEntropyLoss().to(device)
 learning_rate = 1e-4
 epochs = 150
-batch_size = 32
+batch_size = 4
 val_percent = 0.1
 save_checkpoint = True
 amp = True
@@ -80,7 +82,7 @@ unet = smp.Unet(
 # unet = UNet(in_channels=1, out_channels=1, init_features=32)
 unet.to("cuda")
 
-optimizer = optim.Adam(unet.parameters(), lr=0.001)
+optimizer = optim.Adam(unet.parameters(), lr=0.001, betas=(0.5, 0.999))
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, "max", patience=2)
 grad_scaler = torch.cuda.amp.GradScaler(enabled=True)
 global_step = 0
@@ -121,25 +123,33 @@ def evaluate(net, dataloader, device, lossfn, dsel):
 
 # %%
 n_train = len(dataset)
-device = "cuda"
+
 for epoch in range(1, epochs + 1):
     unet.train()
     epoch_loss = 0
     with tqdm(total=n_train, desc=f"Epoch {epoch}/{epochs}", unit="img") as pbar:
         for data in train_loader:
             images, true_masks = dataselector(data)
-            optimizer.zero_grad(set_to_none=True)
 
             images = images.to(device=device, dtype=torch.float32)
             true_masks = true_masks.to(device=device, dtype=torch.float32)
 
-            with torch.cuda.amp.autocast(enabled=True):
-                masks_pred = unet(images)
-                loss = lossfn(masks_pred, true_masks, softmax=False)
+            optimizer.zero_grad()
+            # with torch.cuda.amp.autocast(enabled=True):
+            masks_pred = unet(images)
+            loss = (
+                lossfn(
+                    masks_pred,
+                    true_masks,
+                )
+                + criterion_ce(masks_pred, true_masks)
+            ).mean()
 
-            grad_scaler.scale(loss).backward()
-            grad_scaler.step(optimizer)
-            grad_scaler.update()
+            loss.backward()
+            optimizer.step()
+            # grad_scaler.scale(loss).backward()
+            # grad_scaler.step(optimizer)
+            # grad_scaler.update()
 
             pbar.update(images.shape[0])
             global_step += 1
@@ -148,7 +158,7 @@ for epoch in range(1, epochs + 1):
             scheduler.step(loss)
 
             experiment.log({"train loss": loss.item()})
-            pbar.set_postfix(**{"loss (batch)": f"{loss.item():16}"})
+            pbar.set_postfix(**{"loss epoch": f"{loss.item():16}"})
 
             if global_step % 250 == 0:
 
