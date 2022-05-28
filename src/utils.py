@@ -7,4 +7,5 @@ def plot_image_and_masks(X,y, number_in_batch = 0):
     fig.set_figwidth(20)
     axs[0].imshow(X[number_in_batch,0])
     for i in range(channels):
-        axs[i+1].imshow(y[number_in_batch, i])
+        im = axs[i+1].imshow(y[number_in_batch, i], vmin=0, vmax=1)
+    fig.colorbar(im)

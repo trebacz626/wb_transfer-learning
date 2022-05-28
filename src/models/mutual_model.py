@@ -64,6 +64,8 @@ class MutualModel(BaseModel):
 
         self.netS_syn.to(self.gpu_ids[0])
         self.netS_syn = torch.nn.DataParallel(self.netS_syn, self.gpu_ids)
+        self.softmax = torch.nn.Softmax(dim=1)
+        self.criterion_dice = DiceLoss().to(self.device)
 
         if self.isTrain:
             self.fake_A_pool = ImagePool(opt.pool_size)  # create image buffer to store previously generated images
@@ -73,8 +75,6 @@ class MutualModel(BaseModel):
             self.criterionCycle = torch.nn.L1Loss().to(self.device)
             self.criterionIdt = torch.nn.L1Loss().to(self.device)
             self.criterionCE = torch.nn.CrossEntropyLoss().to(self.device)
-            self.criterion_dice = DiceLoss().to(self.device)
-            self.softmax = torch.nn.Softmax(dim=1)
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
             self.optimizer_G_A = torch.optim.Adam(self.netG_A.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
             self.optimizer_G_T = torch.optim.Adam(self.netG_T.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
@@ -133,6 +133,10 @@ class MutualModel(BaseModel):
 
         if not self.isTrain:
             self.p_T_combined = (self.softmax(self.p_T_real) + self.softmax(self.p_T_syn))/2
+    
+    def forward_return(self):
+        self.forward()
+        return self.p_T_combined.cpu().detach()
 
     def backward_D_basic(self, netD, real, fake):
         """Calculate GAN loss for the discriminator
