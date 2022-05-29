@@ -1,6 +1,7 @@
 import torch
 import itertools
 from torch.optim import lr_scheduler
+import segmentation_models_pytorch as smp
 
 from losses.DiceLoss import DiceLoss
 from util.image_pool import ImagePool
@@ -55,12 +56,23 @@ class MutualModel(BaseModel):
             self.netD_T = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             opt.n_layers_D, opt.norm, opt.init_type, opt.init_gain, self.gpu_ids)
 
-        self.netS_real = UNet()
+        
+        self.netS_real = smp.Unet(
+            encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            encoder_weights=None,     # use `imagenet` pre-trained weights for encoder initialization
+            in_channels=opt.output_nc,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+            classes=opt.num_labels,                      # model output channels (number of classes in your dataset)
+        )
 
         self.netS_real.to(self.gpu_ids[0])
         self.netS_real = torch.nn.DataParallel(self.netS_real, self.gpu_ids)
 
-        self.netS_syn = UNet()
+        self.netS_syn = smp.Unet(
+            encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            encoder_weights=None,     # use `imagenet` pre-trained weights for encoder initialization
+            in_channels=opt.output_nc,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+            classes=opt.num_labels,                      # model output channels (number of classes in your dataset)
+        )
 
         self.netS_syn.to(self.gpu_ids[0])
         self.netS_syn = torch.nn.DataParallel(self.netS_syn, self.gpu_ids)
