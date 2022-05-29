@@ -9,7 +9,7 @@ from torch.optim import lr_scheduler
 import wandb
 from losses.DiceLoss import DiceLoss
 
-from models.unet import UNet
+from models.unet import Unet
 from options.train_options import TrainOptions
 from data.heart_mutual_dataset import HeartMutualDataset
 from data.heart_mutual_valid_dataset import HeartMutualValidDataset
@@ -40,11 +40,12 @@ if __name__ == "__main__":
     print("The number of training images = %d" % dataset_size)
 
     device = "cuda"
-    model = smp.Unet(
-        encoder_name="resnet34", encoder_weights="imagenet", in_channels=1, classes=8
-    )
-    model.load_state_dict(torch.load("unet-checkpoint-final"))
-    offset = 200
+    # model = smp.Unet(
+    #     encoder_name="resnet34", encoder_weights="imagenet", in_channels=1, classes=8
+    # )
+    model = Unet()
+    # model.load_state_dict(torch.load("unet-checkpoint-final"))
+    offset = 0
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=opt.lr, betas=(0.9, 0.999))
     scheduler = lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.9)
