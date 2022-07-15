@@ -1,6 +1,5 @@
 import torch
 import itertools
-import segmentation_models_pytorch as smp
 
 from losses.DiceLoss import DiceLoss
 from util.image_pool import ImagePool

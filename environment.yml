@@ -1,0 +1,15 @@
+name: default-dev
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.8
+  - pip
+  - pytorch=1.10.2=cuda110py38hf0a79ac_1
+  - torchvision=0.11.3=cuda110py38h5376687_2
+  - pkgs/main::cudatoolkit=11.0
+  - scikit-learn
+  - numpy
+  - pandas
+  - pip:
+    - Flask
